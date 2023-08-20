@@ -15,7 +15,7 @@ Then make sure to update the file located at:
 ```bash
 /etc/udev/rules.d/backlight.rules
 ```
-With the following, replacing '\<vendor\>' with your vendor name, the directory found at '/sys/class/backlight/' such as 'intel_backlight':
+With the following, replace <vendor> with your vendor name, the directory found at '/sys/class/backlight/' such as 'intel_backlight':
 ```bash
 ACTION=="add", SUBSYSTEM=="backlight", KERNEL==<vendor>, RUN+="/bin/chgrp video /sys/class/backlight/%k/brightness"
 ACTION=="add", SUBSYSTEM=="backlight", KERNEL==<vendor>, RUN+="/bin/chmod g+w /sys/class/backlight/%k/brightness"
