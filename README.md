@@ -20,7 +20,29 @@ With the following, replacing '\<vendor\>' with your vendor name, the directory 
 ACTION=="add", SUBSYSTEM=="backlight", KERNEL==<vendor>, RUN+="/bin/chgrp video /sys/class/backlight/%k/brightness"
 ACTION=="add", SUBSYSTEM=="backlight", KERNEL==<vendor>, RUN+="/bin/chmod g+w /sys/class/backlight/%k/brightness"
 ```
+### HELP
+```tty
+# bright -h
+NAME:
+   bright - Set the screen brightness
 
+USAGE:
+   bright [global options] command [command options] [arguments...]
+
+COMMANDS:
+   low      Set brightness to low
+   mid      Set brightness to mid
+   max      Set brightness to max
+   dec, -   Decrease screen brightness
+   inc, +   Increase screen brightness
+   pulse    Pulse Effect
+   help, h  Shows a list of commands or help for one command
+
+GLOBAL OPTIONS:
+   --duration value, -d value  Set a fade duration (default: "500ms")
+   --target value, -t value    Set target brightness level in percent (default: "50")
+   --help, -h                  show help
+```
 ### USAGE
 Use -t flag to set a target brightness percentage.
 ```bash
