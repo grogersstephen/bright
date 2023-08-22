@@ -16,18 +16,14 @@ const (
 	PATH = "/sys/class/backlight/intel_backlight/"
 )
 
-func getIntFromFile(path string) (int, error) {
+func getBrightness() (int, error) {
+	path := filepath.Join(PATH, "brightness")
 	dat, err := os.ReadFile(path)
 	if err != nil {
 		return 0, err
 	}
 	s := strings.TrimSpace(string(dat))
-	i, err := strconv.Atoi(s)
-	return i, err
-}
-
-func getBrightness() (int, error) {
-	bright, err := getIntFromFile(filepath.Join(PATH, "brightness"))
+	bright, err := strconv.Atoi(s)
 	return bright, err
 }
 
