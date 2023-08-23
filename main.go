@@ -156,11 +156,14 @@ func main() {
 				Name:        "target",
 				Aliases:     []string{"t"},
 				Usage:       "Set target brightness level in percent",
-				Value:       "50",
 				Destination: &targetBrightness,
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
+			if targetBrightness == "" {
+				fmt.Fprintf(os.Stdout, "Please set a valid target brightness.\n")
+				return nil
+			}
 			level, err := strconv.Atoi(targetBrightness)
 			if err != nil {
 				err = fmt.Errorf("invalid target: %w", err)
@@ -171,24 +174,27 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			{
-				Name:  "low",
-				Usage: "Set brightness to low",
+				Name:    "low",
+				Aliases: []string{"lo"},
+				Usage:   "Set brightness to low",
 				Action: func(cCtx *cli.Context) error {
 					err := l.fade(5, fadeTime)
 					return err
 				},
 			},
 			{
-				Name:  "mid",
-				Usage: "Set brightness to mid",
+				Name:    "mid",
+				Aliases: []string{"medium"},
+				Usage:   "Set brightness to mid",
 				Action: func(cCtx *cli.Context) error {
 					err := l.fade(50, fadeTime)
 					return err
 				},
 			},
 			{
-				Name:  "max",
-				Usage: "Set brightness to max",
+				Name:    "high",
+				Aliases: []string{"hi", "max"},
+				Usage:   "Set brightness to max",
 				Action: func(cCtx *cli.Context) error {
 					err := l.fade(100, fadeTime)
 					return err
