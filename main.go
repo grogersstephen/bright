@@ -67,11 +67,6 @@ func levelToPercent(level int) int {
 	return level * 100 / 120000
 }
 
-func (l *light) setBrightness(percentage int) error {
-	err := l.fade(percentage, "500ms")
-	return err
-}
-
 func (l *light) setBrightLevel(level int) error {
 	levelS := fmt.Sprintf("%d", level)
 	err := os.WriteFile(l.Path, []byte(levelS), 0644)
