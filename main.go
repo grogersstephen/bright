@@ -13,12 +13,43 @@ import (
 )
 
 const (
-	PATH = "/sys/class/backlight/intel_backlight/"
+	PATH = "/sys/class/backlight/"
 )
 
-func getBrightness() (int, error) {
-	path := filepath.Join(PATH, "brightness")
-	dat, err := os.ReadFile(path)
+type light struct {
+	Class  string
+	Vendor string
+	Path   string
+}
+
+func (l *light) findPath() error {
+	files, err := os.ReadDir(l.Class)
+	if err != nil {
+		return err
+	}
+	for _, file := range files {
+		vendor := file.Name()
+		vendorPath := filepath.Join(l.Class, file.Name())
+		brightPath := filepath.Join(vendorPath, "brightness")
+		dat, err := os.ReadFile(brightPath)
+		if err != nil {
+			continue
+		}
+		level, err := strconv.Atoi(strings.TrimSpace(string(dat)))
+		if err != nil {
+			continue
+		}
+		if level > 0 {
+			l.Vendor = vendor
+			l.Path = filepath.Join(l.Class, l.Vendor, "brightness")
+			return nil
+		}
+	}
+	return fmt.Errorf("could not find path")
+}
+
+func (l *light) getBrightness() (int, error) {
+	dat, err := os.ReadFile(l.Path)
 	if err != nil {
 		return 0, err
 	}
@@ -36,39 +67,38 @@ func levelToPercent(level int) int {
 	return level * 100 / 120000
 }
 
-func setBrightness(percentage int) error {
-	err := fade(percentage, "500ms")
+func (l *light) setBrightness(percentage int) error {
+	err := l.fade(percentage, "500ms")
 	return err
 }
 
-func setBrightLevel(level int) error {
-	path := filepath.Join(PATH, "brightness")
+func (l *light) setBrightLevel(level int) error {
 	levelS := fmt.Sprintf("%d", level)
-	err := os.WriteFile(path, []byte(levelS), 0644)
+	err := os.WriteFile(l.Path, []byte(levelS), 0644)
 	return err
 }
 
-func incBrightness(percentage int) error {
-	brightness, err := getBrightness()
+func (l *light) incBrightness(percentage int) error {
+	brightness, err := l.getBrightness()
 	if err != nil {
 		return err
 	}
 	brightnessp := levelToPercent(brightness)
-	err = setBrightness(brightnessp + percentage)
+	err = l.fade(brightnessp+percentage, "50ms")
 	return err
 }
 
-func decBrightness(percentage int) error {
-	brightness, err := getBrightness()
+func (l *light) decBrightness(percentage int) error {
+	brightness, err := l.getBrightness()
 	if err != nil {
 		return err
 	}
 	brightnessp := levelToPercent(brightness)
-	err = setBrightness(brightnessp - percentage)
+	err = l.fade(brightnessp-percentage, "50ms")
 	return err
 }
 
-func fade(target int, duration string) error {
+func (l *light) fade(target int, duration string) error {
 	// target will be accepted in percent
 	fadeTime, err := time.ParseDuration(duration)
 	if err != nil {
@@ -76,7 +106,7 @@ func fade(target int, duration string) error {
 	}
 	// We'll assume 60 fps
 	targetLevel := percentToLevel(target)
-	currentLevel, err := getBrightness()
+	currentLevel, err := l.getBrightness()
 	if err != nil {
 		return err
 	}
@@ -87,21 +117,21 @@ func fade(target int, duration string) error {
 	for difference > 100 || difference < -100 {
 		currentLevel -= step
 		difference = currentLevel - targetLevel
-		setBrightLevel(currentLevel)
+		l.setBrightLevel(currentLevel)
 		time.Sleep(stepinterval)
 	}
 	return nil
 }
 
-func pulse(amp int) error {
-	currentLevel, err := getBrightness()
+func (l *light) pulse(amp int) error {
+	currentLevel, err := l.getBrightness()
 	if err != nil {
 		return err
 	}
 	currentPercent := levelToPercent(currentLevel)
 	for {
-		fade(currentPercent+amp, "75ms")
-		fade(currentPercent-amp, "75ms")
+		l.fade(currentPercent+amp, "75ms")
+		l.fade(currentPercent-amp, "75ms")
 		time.Sleep(time.Millisecond * 200)
 	}
 }
@@ -109,6 +139,12 @@ func pulse(amp int) error {
 func main() {
 	var fadeTime string
 	var target string
+	var l light
+	l.Class = PATH
+	err := l.findPath()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	app := &cli.App{
 		Name:  "bright",
@@ -135,7 +171,7 @@ func main() {
 				err = fmt.Errorf("invalid target: %w", err)
 				return err
 			}
-			err = fade(level, fadeTime)
+			err = l.fade(level, fadeTime)
 			return err
 		},
 		Commands: []*cli.Command{
@@ -143,7 +179,7 @@ func main() {
 				Name:  "low",
 				Usage: "Set brightness to low",
 				Action: func(cCtx *cli.Context) error {
-					err := fade(5, fadeTime)
+					err := l.fade(5, fadeTime)
 					return err
 				},
 			},
@@ -151,7 +187,7 @@ func main() {
 				Name:  "mid",
 				Usage: "Set brightness to mid",
 				Action: func(cCtx *cli.Context) error {
-					err := fade(50, fadeTime)
+					err := l.fade(50, fadeTime)
 					return err
 				},
 			},
@@ -159,7 +195,7 @@ func main() {
 				Name:  "max",
 				Usage: "Set brightness to max",
 				Action: func(cCtx *cli.Context) error {
-					err := fade(100, fadeTime)
+					err := l.fade(100, fadeTime)
 					return err
 				},
 			},
@@ -168,7 +204,7 @@ func main() {
 				Aliases: []string{"-"},
 				Usage:   "Decrease screen brightness",
 				Action: func(cCtx *cli.Context) error {
-					err := decBrightness(5)
+					err := l.decBrightness(10)
 					return err
 				},
 			},
@@ -177,7 +213,7 @@ func main() {
 				Aliases: []string{"+"},
 				Usage:   "Increase screen brightness",
 				Action: func(cCtx *cli.Context) error {
-					err := incBrightness(5)
+					err := l.incBrightness(10)
 
 					return err
 				},
@@ -186,7 +222,7 @@ func main() {
 				Name:  "pulse",
 				Usage: "Pulse Effect",
 				Action: func(cCtx *cli.Context) error {
-					err := pulse(25)
+					err := l.pulse(25)
 					return err
 				},
 			},
