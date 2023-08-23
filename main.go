@@ -13,38 +13,40 @@ import (
 )
 
 const (
+	// Set the linux device class path for the backlight
 	PATH = "/sys/class/backlight/"
 )
 
+// this struct contains the path to the backlight device
 type light struct {
-	Class  string
-	Vendor string
-	Path   string
+	Path string
 }
 
 func (l *light) findPath() error {
-	files, err := os.ReadDir(l.Class)
+	// findPath() will find the backlight device in the linux backlight device PATH
+	//     and ensure that it contains the file 'brightness'
+	files, err := os.ReadDir(PATH)
 	if err != nil {
 		return err
 	}
+
+	// iterate over each file in PATH
 	for _, file := range files {
-		vendor := file.Name()
-		vendorPath := filepath.Join(l.Class, file.Name())
-		brightPath := filepath.Join(vendorPath, "brightness")
-		dat, err := os.ReadFile(brightPath)
+		brightnessPath := filepath.Join(PATH, file.Name(), "brightness")
+		dat, err := os.ReadFile(brightnessPath)
 		if err != nil {
-			continue
+			continue // if the file 'brightness' cannot be read, go to next iteration
 		}
 		level, err := strconv.Atoi(strings.TrimSpace(string(dat)))
 		if err != nil {
-			continue
+			continue // if the contents of file 'brightness' cannot be parsed to int, go to next iteration
 		}
-		if level > 0 {
-			l.Vendor = vendor
-			l.Path = filepath.Join(l.Class, l.Vendor, "brightness")
+		if level > 0 { // if the contents of file 'brightness' is a number > 0, then set the l.Path and return
+			l.Path = brightnessPath
 			return nil
 		}
 	}
+	// If file 'brightness' with an integer value was not found, return error
 	return fmt.Errorf("could not find path")
 }
 
@@ -132,13 +134,11 @@ func (l *light) pulse(amp int) error {
 }
 
 func main() {
-	var fadeTime string
-	var target string
-	var l light
-	l.Class = PATH
-	err := l.findPath()
+	var fadeTime, targetBrightness string // declare the variables used for flags
+	var l light                           // declare an instance of light struct
+	err := l.findPath()                   // find the backlight device path under /sys/class/backlight
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err) // if we cannot find the backlight device, exit the program
 	}
 
 	app := &cli.App{
@@ -157,11 +157,11 @@ func main() {
 				Aliases:     []string{"t"},
 				Usage:       "Set target brightness level in percent",
 				Value:       "50",
-				Destination: &target,
+				Destination: &targetBrightness,
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
-			level, err := strconv.Atoi(target)
+			level, err := strconv.Atoi(targetBrightness)
 			if err != nil {
 				err = fmt.Errorf("invalid target: %w", err)
 				return err
