@@ -21,7 +21,8 @@ const (
 
 // this struct contains the path to the backlight device
 type light struct {
-	Path string
+	Path          string
+	MaxBrightness int
 }
 
 func (l *light) findPath() error {
@@ -62,13 +63,23 @@ func (l *light) getBrightness() (int, error) {
 	return bright, err
 }
 
+func (l *light) getMaxBrightness() error {
+	dat, err := os.ReadFile(filepath.Join(l.Path, "max_brightness"))
+	if err != nil {
+		return err
+	}
+	s := strings.TrimSpace(string(dat))
+	l.MaxBrightness, err = strconv.Atoi(s)
+	return err
+}
+
 func percentToLevel(percentage int) int {
-	level := percentage * 120000 / 100
+	level := percentage * l.MaxBrightness / 100
 	return level
 }
 
 func levelToPercent(level int) int {
-	return level * 100 / 120000
+	return level * 100 / l.MaxBrightness
 }
 
 func (l *light) setBrightLevel(level int) error {
@@ -146,6 +157,10 @@ func main() {
 	err := l.findPath()                   // find the backlight device path under /sys/class/backlight
 	if err != nil {
 		log.Fatal(err) // if we cannot find the backlight device, exit the program
+	}
+	err = l.getMaxBrightness() // find and set the MaxBrightness
+	if err != nil {
+		log.Fatal(err) // If we can't read /sys/class/backlight/<vendor>/max_brightness, exit the program
 	}
 
 	app := &cli.App{
