@@ -44,7 +44,7 @@ func (l *light) findPath() error {
 			continue // if the contents of file 'brightness' cannot be parsed to int, go to next iteration
 		}
 		if level > 0 { // if the contents of file 'brightness' is a number > 0, then set the l.Path and return
-			l.Path = brightnessPath
+			l.Path = filepath.Join(PATH, file.Name())
 			return nil
 		}
 	}
@@ -53,7 +53,7 @@ func (l *light) findPath() error {
 }
 
 func (l *light) getBrightness() (int, error) {
-	dat, err := os.ReadFile(l.Path)
+	dat, err := os.ReadFile(filepath.Join(l.Path, "brightness"))
 	if err != nil {
 		return 0, err
 	}
@@ -73,7 +73,7 @@ func levelToPercent(level int) int {
 
 func (l *light) setBrightLevel(level int) error {
 	levelS := fmt.Sprintf("%d", level)
-	err := os.WriteFile(l.Path, []byte(levelS), 0644)
+	err := os.WriteFile(filepath.Join(l.Path, "brightness"), []byte(levelS), 0644)
 	return err
 }
 
