@@ -15,6 +15,8 @@ import (
 const (
 	// Set the linux device class path for the backlight
 	PATH = "/sys/class/backlight/"
+	// Set the lowest accepted backlight level for when decreasing incrementally
+	BOTTOM_THRESHOLD = 1 // percent
 )
 
 // this struct contains the path to the backlight device
@@ -81,7 +83,8 @@ func (l *light) incBrightness(percentage int) error {
 		return err
 	}
 	brightnessp := levelToPercent(brightness)
-	err = l.fade(brightnessp+percentage, "50ms")
+	target := brightnessp + percentage
+	err = l.fade(target, "125ms")
 	return err
 }
 
@@ -91,7 +94,11 @@ func (l *light) decBrightness(percentage int) error {
 		return err
 	}
 	brightnessp := levelToPercent(brightness)
-	err = l.fade(brightnessp-percentage, "50ms")
+	target := brightnessp - percentage
+	if target < BOTTOM_THRESHOLD {
+		target = BOTTOM_THRESHOLD
+	}
+	err = l.fade(target, "125ms")
 	return err
 }
 
@@ -205,7 +212,7 @@ func main() {
 				Aliases: []string{"-"},
 				Usage:   "Decrease screen brightness",
 				Action: func(cCtx *cli.Context) error {
-					err := l.decBrightness(10)
+					err := l.decBrightness(5)
 					return err
 				},
 			},
@@ -214,7 +221,7 @@ func main() {
 				Aliases: []string{"+"},
 				Usage:   "Increase screen brightness",
 				Action: func(cCtx *cli.Context) error {
-					err := l.incBrightness(10)
+					err := l.incBrightness(5)
 
 					return err
 				},
