@@ -19,6 +19,8 @@ const (
 	BOTTOM_THRESHOLD = 1 // percent
 )
 
+var MAX_BRIGHTNESS int
+
 // this struct contains the path to the backlight device
 type light struct {
 	Path          string
@@ -153,8 +155,9 @@ func (l *light) pulse(amp int) error {
 
 func main() {
 	var fadeTime, targetBrightness string // declare the variables used for flags
-	var l light                           // declare an instance of light struct
-	err := l.findPath()                   // find the backlight device path under /sys/class/backlight
+	var actualBrightnessBool bool
+	var l light         // declare an instance of light struct
+	err := l.findPath() // find the backlight device path under /sys/class/backlight
 	if err != nil {
 		log.Fatal(err) // if we cannot find the backlight device, exit the program
 	}
@@ -239,6 +242,32 @@ func main() {
 					err := l.incBrightness(5)
 
 					return err
+				},
+			},
+			{
+				Name:  "get",
+				Usage: "get the current screen brightness in percentage",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:        "actual",
+						Aliases:     []string{"a"},
+						Usage:       "get the actual brightness level",
+						Value:       false,
+						Destination: &actualBrightnessBool,
+					},
+				},
+				Action: func(cCtx *cli.Context) error {
+					level, err := l.getBrightness()
+					if err != nil {
+						return err
+					}
+					if actualBrightnessBool {
+						fmt.Printf("%d", level)
+						return nil
+					}
+					brightnessPercent := levelToPercent(level)
+					fmt.Printf("%d%%", brightnessPercent)
+					return nil
 				},
 			},
 			{
